@@ -11,8 +11,8 @@ ChangeBounty: users fund website-monitoring jobs with USDC on Arc. An agent hash
 ## Tech stack
 
 - Frontend: React 18, Vite, TypeScript, Tailwind, react-router-dom, wagmi v2, viem, ConnectKit, framer-motion.
-- Server: Bun + node:http in `server/` (SSRF-safe fetcher, monitor, verifier, API). Vite proxies `/api` to :3001. Run with `bun run server`.
-- Contracts: `contracts/ChangeBounty.sol` (OpenZeppelin 5.6.1, Solidity 0.8.28). Tests in `contracts/test/ChangeBounty.t.sol` (97 passing: 93 unit and fuzz, 4 invariant). Server tests: `bun run test:server` (72 passing).
+- Server: Bun + node:http in `server/` (SSRF-safe fetcher, monitor, verifier, API, Telegram and email alerts in `alerts.ts`/`alertText.ts`). Vite proxies `/api` to :3001. Run with `bun run server`.
+- Contracts: `contracts/ChangeBounty.sol` (OpenZeppelin 5.6.1, Solidity 0.8.28). Tests in `contracts/test/ChangeBounty.t.sol` (97 passing: 93 unit and fuzz, 4 invariant). Server tests: `bun run test:server` (83 passing).
 
 ## Deployments
 
@@ -28,11 +28,12 @@ ChangeBounty: users fund website-monitoring jobs with USDC on Arc. An agent hash
 ## Rules for editing
 
 - Network and addresses come from `.env` (`VITE_ARC_NETWORK`, `VITE_CHANGEBOUNTY_ADDRESS`, `VITE_AGENT_ADDRESS`) via `/api/config`; chain and USDC facts come from `@/onchain-facts`.
-- Secrets (`VERIFIER_PRIVATE_KEY`, `DEMO_ADMIN_TOKEN`, `TEST_CREATOR_PRIVATE_KEY`) live in `~/.changebounty/secrets.env` or host secrets, never in `.env` or the project. Never print them. Run `bun run check:secrets` before pushing or deploying.
+- Secrets (`VERIFIER_PRIVATE_KEY`, `DEMO_ADMIN_TOKEN`, `TEST_CREATOR_PRIVATE_KEY`, `TELEGRAM_BOT_TOKEN`, `RESEND_API_KEY`) live in `~/.changebounty/secrets.env` or host secrets, never in `.env` or the project. Never print them. Run `bun run check:secrets` before pushing or deploying.
 - Mainnet is never deployed or transacted by Arc Studio; the user does it (docs/MAINNET_RUNBOOK.md).
 - `ALLOW_PRIVATE_FETCH_HOSTS=localhost:3001` is sandbox-only so the agent can fetch the local demo page. Leave empty in production.
-- Do not weaken `server/ssrf.ts`; every fetch goes through it.
+- Do not weaken `server/ssrf.ts`; every fetch of a monitored page goes through it. Alerts only call the fixed Telegram and Resend API hosts (`server/telegram.ts`, `server/email.ts`).
 - Known limitation: a USDC-blocked agent address cannot be paid (documented in docs/SECURITY.md).
+- Alerts: subscriptions need a wallet signature built by `src/lib/alertMessage.ts` (shared by app and server; change both sides together). Chat ids and emails never leave the server. Page text in alerts goes through `inertText`. See docs/NOTIFICATIONS.md.
 
 ## To run
 

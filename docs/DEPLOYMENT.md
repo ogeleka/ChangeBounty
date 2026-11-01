@@ -224,7 +224,37 @@ Do not skip the testnet journey if you have not done it. Mainnet moves real USDC
    Every line must say PASS. On mainnet the server refuses to start if the contract, agent address, verifier key or public https URL is missing.
 5. Run the small real-USDC demonstration from the **Live demo** page (reward 0.01 USDC, fund 0.02 USDC), following the runbook.
 
-## 12. Troubleshooting
+## 12. Optional: Telegram and email alerts
+
+Job creators can get alerts on Telegram and by email when a change is paid or a job needs attention (see [NOTIFICATIONS.md](NOTIFICATIONS.md)). Each channel turns on when its settings are present. The Alerts card on the job page only shows the channels that are on.
+
+**Telegram**
+
+1. In Telegram, open **@BotFather**, send `/newbot`, and choose a name and a username ending in `bot` (for example `ChangeBountyAlertsBot`). BotFather replies with a token like `123456789:AA…`. Treat it like a password.
+2. Optional: use `/setdescription` and `/setuserpic` in BotFather so the bot looks official.
+3. Add the token to the settings file: `TELEGRAM_BOT_TOKEN=...`
+
+The server polls Telegram for messages, so Nginx needs no change. Use each bot token in one place only. If a local copy of the app runs with the same token, the two compete for messages, and the log says "another process is using this bot token".
+
+**Email (Resend)**
+
+1. Create an account at https://resend.com and add your domain (for example `ogsnap.online`) under **Domains**.
+2. Resend shows DNS records (TXT records for SPF and DKIM, and an MX record for bounces). Add them in Cloudflare DNS exactly as shown and wait until Resend marks the domain **Verified**.
+3. Create an API key with **Sending access** only.
+4. Add to the settings file: `RESEND_API_KEY=re_...` and `EMAIL_FROM=ChangeBounty <alerts@ogsnap.online>`. The sender must be on the verified domain.
+
+**Apply and check**
+
+```bash
+sudo nano /opt/changebounty/changebounty.env      # add the lines above
+sudo docker compose up -d --force-recreate
+sudo docker compose logs --tail=40 app | grep -E 'telegram|alerts'
+curl -s https://changebounty.ogsnap.online/api/config   # "alerts" lists the channels that are on
+```
+
+You should see `[telegram] connected as @YourBot`. A line saying "Telegram alerts off" or "Email alerts off" names the missing setting. Then open one of your jobs, connect the creator wallet and use the Alerts card.
+
+## 13. Troubleshooting
 
 | Symptom | Check |
 | --- | --- |
@@ -235,6 +265,9 @@ Do not skip the testnet journey if you have not done it. Mainnet moves real USDC
 | Demo page never detected | `curl -s https://changebounty.ogsnap.online/api/demo-site/announcements` from the VPS; check Cloudflare bot rules (section 10). |
 | Payouts say verifier not authorised | The contract's verifier must equal the verifier address from step 4. |
 | Status `blocksBehind` large in `/api/health` | The chain scan is still catching up; wait, and make sure `VITE_CHANGEBOUNTY_DEPLOY_TX` is set. |
+| No Alerts card on a job page | Only the job's creator sees it, and only for channels that are configured (section 12). Check `alerts` in `/api/config`. |
+| "This link has expired" in Telegram | A link works once, for 15 minutes. Press Connect Telegram again on the job page. |
+| No confirmation email | Check the spam folder. `docker compose logs app \| grep alerts` shows provider errors. The sender in `EMAIL_FROM` must be on a domain verified in Resend. |
 
 ## Security checklist
 

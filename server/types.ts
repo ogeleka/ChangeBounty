@@ -105,6 +105,14 @@ export interface PublicConfig {
   demoPublishEnabled: boolean
   verifierReady: boolean
   minRewardRaw: string
+  /** Which alert channels this server offers. `site` is signed into alert requests. */
+  alerts: { telegramBot: string | null; email: boolean; site: string }
+}
+
+/** Alert subscriptions for one wallet. Booleans only: chat ids and email addresses are never returned. */
+export interface AlertStatus {
+  telegram: boolean
+  email: 'none' | 'pending' | 'confirmed'
 }
 
 export interface SyncStatus {

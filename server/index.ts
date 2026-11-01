@@ -1,7 +1,19 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { extname, join, normalize } from 'node:path'
-import { isHex, type Hex } from 'viem'
+import { isAddress, isHex, type Hex } from 'viem'
+import {
+  AlertError,
+  alertPage,
+  alertsAvailable,
+  alertStatus,
+  confirmEmail,
+  startAlerts,
+  startTelegramLink,
+  subscribeEmail,
+  unsubscribeEmailByToken,
+  unsubscribeSigned,
+} from './alerts'
 import { readJob, revertMessage, verifierHasGas } from './chain'
 import { recoverInterrupted } from './verifier'
 import { syncFromChain, syncStatus } from './chainSync'
@@ -48,6 +60,27 @@ function send(res: ServerResponse, status: number, body: unknown, headers: Recor
   })
   res.end(isString ? body : JSON.stringify(body))
 }
+
+/** Reads and discards a small body (HTML form posts), so keep-alive connections stay usable. */
+async function drain(req: IncomingMessage): Promise<void> {
+  let size = 0
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length
+    if (size > MAX_BODY) throw new HttpError(413, 'Request body too large.')
+  }
+}
+
+/** Alert endpoints report bad input as 400 with a message safe to show. */
+async function alertCall<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    if (err instanceof AlertError) throw new HttpError(400, err.message)
+    throw err
+  }
+}
+
+const PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 
 async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = []
@@ -118,6 +151,7 @@ function publicConfig(): PublicConfig {
     demoPublishEnabled: config.adminToken !== null,
     verifierReady: config.verifierKey !== null && config.contract !== null,
     minRewardRaw: config.minRewardRaw.toString(),
+    alerts: alertsAvailable(),
   }
 }
 
@@ -234,6 +268,52 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     return send(res, 200, paid)
   }
 
+  if (path === '/api/alerts/status' && method === 'GET') {
+    limit(req, 'alerts-status', 60, 60_000)
+    const address = url.searchParams.get('address') ?? ''
+    if (!isAddress(address)) throw new HttpError(400, 'Invalid wallet address.')
+    return send(res, 200, alertStatus(address))
+  }
+  if (path === '/api/alerts/telegram' && method === 'POST') {
+    limit(req, 'alerts-telegram', 10, 60_000)
+    const body = await readJson(req)
+    return send(res, 200, await alertCall(() => startTelegramLink(body)))
+  }
+  if (path === '/api/alerts/email' && method === 'POST') {
+    limit(req, 'alerts-email', 5, 60_000)
+    const body = await readJson(req)
+    return send(res, 200, await alertCall(() => subscribeEmail(body)))
+  }
+  if (path === '/api/alerts/unsubscribe' && method === 'POST') {
+    limit(req, 'alerts-unsubscribe', 10, 60_000)
+    const body = await readJson(req)
+    return send(res, 200, await alertCall(() => unsubscribeSigned(body)))
+  }
+  if (path === '/api/alerts/email/confirm' || path === '/api/alerts/email/unsubscribe') {
+    limit(req, 'alerts-link', 30, 60_000)
+    const t = url.searchParams.get('token') ?? ''
+    const confirm = path.endsWith('/confirm')
+    const action = `${path}?token=${encodeURIComponent(t)}`
+    if (method === 'GET') {
+      const page = confirm
+        ? alertPage('Confirm email alerts', 'Press the button to start receiving ChangeBounty alerts at this address.', { action, label: 'Confirm alerts' })
+        : alertPage('Unsubscribe', 'Press the button to stop ChangeBounty alerts to this address.', { action, label: 'Unsubscribe' })
+      return send(res, 200, page, { 'content-security-policy': PAGE_CSP })
+    }
+    if (method === 'POST') {
+      await drain(req)
+      if (confirm) {
+        const email = confirmEmail(t)
+        const page = email ? alertPage('Alerts confirmed', `ChangeBounty alerts will be sent to ${email}. Every email has an unsubscribe link.`) : alertPage('Link not valid', 'This confirmation link is unknown or was replaced by a newer one. Subscribe again from your job page.')
+        return send(res, email ? 200 : 404, page, { 'content-security-policy': PAGE_CSP })
+      }
+      const done = unsubscribeEmailByToken(t)
+      const page = done ? alertPage('Unsubscribed', 'You will not get any more ChangeBounty alerts at this address.') : alertPage('Already unsubscribed', 'This address is not subscribed to ChangeBounty alerts.')
+      return send(res, 200, page, { 'content-security-policy': PAGE_CSP })
+    }
+    throw new HttpError(405, 'Use GET or POST.')
+  }
+
   if (path.startsWith('/api/')) throw new HttpError(404, 'Not found.')
   if ((method === 'GET' || method === 'HEAD') && serveStatic(req, res, path)) return
   throw new HttpError(404, 'Not found.')
@@ -266,6 +346,8 @@ server.listen(config.port, () => {
   if (config.allowPrivateHosts.size > 0) console.warn('[server] ALLOW_PRIVATE_FETCH_HOSTS is set. Development only.')
   if (!config.verifierKey) console.warn('[server] VERIFIER_PRIVATE_KEY is not set: payouts are disabled.')
   refreshGas()
+  // Before the first sync, so payments recovered at startup also send alerts.
+  startAlerts()
   // Reconcile with the chain, settle anything a restart interrupted, then begin polling.
   void (async () => {
     await syncFromChain()

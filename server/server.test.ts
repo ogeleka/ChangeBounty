@@ -83,9 +83,10 @@ describe('SSRF guard', () => {
     expect(toSafeFetchError(Object.assign(new Error('getaddrinfo ENOTFOUND db.internal'), { code: 'ENOTFOUND' })).message).not.toContain('db.internal')
   })
 
+  // Real DNS lookup: allow for a slow resolver so a deploy build does not fail on the 5 s default.
   test('rejects a private DNS result', async () => {
     await expect(validatePublicUrl('http://127.0.0.1.nip.io/')).rejects.toThrow()
-  })
+  }, 20_000)
 })
 
 describe('text extraction', () => {

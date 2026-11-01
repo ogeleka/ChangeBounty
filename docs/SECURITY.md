@@ -36,6 +36,13 @@ If a job's agent address is later blocked by the USDC issuer, payouts to it reve
 - **Public exposure of monitored URLs:** job addresses are written to a public blockchain and listed in the dashboard. URLs with a #fragment, or with query parameters that look like tokens, keys, sessions or signatures, are refused, and the create form says so. Do not monitor private links.
 - **Spam and abuse:** the service only monitors jobs whose agent address is its own, enforces a minimum reward, a per-wallet job limit and a global job cap, spaces payouts per job with a cooldown, and rate-limits register, check, publish and validate calls.
 
+## Alerts
+
+- Subscribing needs a fresh, single-use signature from the wallet that created a monitored job. Email is double opt-in, and confirm and unsubscribe links only act on a button press (POST).
+- Telegram chat IDs and email addresses are kept only in the server state file, never onchain, never in API responses. The bot token and email key are secrets like the verifier key.
+- Monitored page text in alerts is plain text with control characters removed and web addresses broken, so alerts link only to ChangeBounty and Arc Explorer.
+- Sending is rate-limited per job, per email address and per client, and runs separately from monitoring and payouts. Details: [NOTIFICATIONS.md](NOTIFICATIONS.md).
+
 ## Payout verification
 
 The verifier re-fetches the page itself with a separate identity and pays only if its hash matches the agent's, differs from the baseline, the change is meaningful, the job is Active and funded, and the discovery id recomputed from chain state matches (job, baseline, new content, payouts so far). It checks `isPaid` before sending and the contract refuses repeats.

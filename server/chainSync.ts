@@ -1,6 +1,7 @@
 import type { Hex } from 'viem'
 import { changeBountyAbi } from '../src/contracts/changeBounty'
 import { publicClient, requireContract, revertMessage, toCreatedEvent } from './chain'
+import { onVerifierProposed } from './alerts'
 import { config } from './config'
 import { adoptJob } from './monitor'
 import { store } from './store'
@@ -80,7 +81,11 @@ export async function syncFromChain(): Promise<void> {
       try {
         const logs = await publicClient.getLogs({
           address,
-          events: [changeBountyAbi.find((i) => i.type === 'event' && i.name === 'JobCreated')!, changeBountyAbi.find((i) => i.type === 'event' && i.name === 'DiscoveryPaid')!],
+          events: [
+            changeBountyAbi.find((i) => i.type === 'event' && i.name === 'JobCreated')!,
+            changeBountyAbi.find((i) => i.type === 'event' && i.name === 'DiscoveryPaid')!,
+            changeBountyAbi.find((i) => i.type === 'event' && i.name === 'VerifierProposed')!,
+          ],
           fromBlock: from,
           toBlock: to,
         })
@@ -90,6 +95,9 @@ export async function syncFromChain(): Promise<void> {
           } else if (log.eventName === 'DiscoveryPaid') {
             const a = log.args as { jobId: bigint; discoveryId: Hex; reward: bigint }
             adoptPayment(a.jobId.toString(), a.discoveryId, log.transactionHash as Hex, log.blockNumber ?? 0n, a.reward)
+          } else if (log.eventName === 'VerifierProposed') {
+            const a = log.args as { proposedVerifier: string; activatableAt: bigint }
+            onVerifierProposed(a.proposedVerifier, a.activatableAt, `verifier-proposed:${log.transactionHash}:${log.logIndex}`)
           }
         }
         store.setCursor(to)

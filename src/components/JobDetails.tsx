@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ExternalLink, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import AlertsPanel from '@/components/AlertsPanel'
 import JobTimeline from '@/components/JobTimeline'
 import { Empty, Reveal, Spinner, Stat, StatusPill, TxLink } from '@/components/ui'
 import { describeError, useBounty } from '@/hooks/useBounty'
@@ -221,6 +222,7 @@ export default function JobDetails() {
         </section>
         <aside className="space-y-6">
           {isCreator && <CreatorPanel job={job} />}
+          {isCreator && b.address && <AlertsPanel address={b.address} />}
           <section aria-labelledby="tl">
             <h2 id="tl" className="display mb-3 text-2xl font-semibold">Activity</h2>
             <div className="card p-3"><JobTimeline events={job.events} chainId={cfg.chainId} /></div>

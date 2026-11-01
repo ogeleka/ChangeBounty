@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import type { Announcement, Discovery, JobView, PublicConfig } from '../../server/types'
+import type { AlertStatus, Announcement, Discovery, JobView, PublicConfig } from '../../server/types'
 
-export type { Announcement, Discovery, JobView, PublicConfig }
+export type { AlertStatus, Announcement, Discovery, JobView, PublicConfig }
 
 export class ApiError extends Error {}
 

@@ -4,13 +4,53 @@ import { config } from './config'
 import { redact } from './redact'
 import type { Announcement, Discovery, JobEvent, JobEventType, MonitoredJob } from './types'
 
+export interface TelegramLink {
+  chatId: number
+  linkedAt: number
+}
+
+export interface EmailSubscription {
+  email: string
+  confirmed: boolean
+  confirmToken: string
+  unsubscribeToken: string
+  createdAt: number
+  confirmedAt?: number
+  lastConfirmSentAt: number
+}
+
+export interface OutboxItem {
+  id: string
+  /** Lowercased creator wallet. The recipient is looked up at send time, so unsubscribing cancels pending alerts. */
+  address: string
+  channel: 'telegram' | 'email'
+  subject: string
+  text: string
+  attempts: number
+  nextAt: number
+  createdAt: number
+}
+
+export interface AlertState {
+  telegram: Record<string, TelegramLink>
+  email: Record<string, EmailSubscription>
+  outbox: OutboxItem[]
+  /** Keys of chain events already alerted on, so a rescan never alerts twice. */
+  seen: string[]
+  telegramOffset?: number
+}
+
 interface State {
   jobs: Record<string, MonitoredJob>
   discoveries: Record<string, Discovery>
   announcements: Announcement[]
   /** Last block scanned for contract events. Lets a restart (or a wiped disk) resume instead of rescanning. */
   cursor?: string
+  alerts?: AlertState
 }
+
+type EventListener = (job: MonitoredJob, event: JobEvent) => void
+const listeners: EventListener[] = []
 
 const MAX_EVENTS = 200
 // One state file per network and contract, so redeploying a contract never mixes old and new jobs.
@@ -94,13 +134,26 @@ export const store = {
     persist()
   },
   addEvent(job: MonitoredJob, type: JobEventType, message: string, extra: Partial<JobEvent> = {}): void {
-    job.events.push({ t: Date.now(), type, message: redact(message, true), ...extra })
+    const event: JobEvent = { t: Date.now(), type, message: redact(message, true), ...extra }
+    job.events.push(event)
     if (job.events.length > MAX_EVENTS) {
       // Keep the most recent entries but never drop the first (registered) entry.
       job.events.splice(1, job.events.length - MAX_EVENTS)
     }
     persist()
+    for (const listener of listeners) {
+      try {
+        listener(job, event)
+      } catch (err) {
+        console.error('[store] event listener failed:', err instanceof Error ? redact(err.message) : 'unknown error')
+      }
+    }
   },
+  /** Called after every job event is recorded (alerts subscribe here). Listeners must not throw or block. */
+  onEvent(listener: EventListener): void {
+    listeners.push(listener)
+  },
+  alerts: (): AlertState => (state.alerts ??= { telegram: {}, email: {}, outbox: [], seen: [] }),
   discoveriesFor: (jobId: string): Discovery[] =>
     Object.values(state.discoveries)
       .filter((d) => d.jobId === jobId)

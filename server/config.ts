@@ -110,6 +110,12 @@ export const config = {
   minRewardRaw: minReward(),
   maxJobsPerCreator: intEnv('MAX_JOBS_PER_CREATOR', 5, 1, 100),
   dataDir: env.DATA_DIR ?? 'server/data',
+  /** Server-side only. Telegram bot token from @BotFather; enables Telegram alerts. */
+  telegramToken: env.TELEGRAM_BOT_TOKEN && /^\d{5,15}:[A-Za-z0-9_-]{30,}$/.test(env.TELEGRAM_BOT_TOKEN) ? env.TELEGRAM_BOT_TOKEN : null,
+  /** Server-side only. Resend API key; with EMAIL_FROM it enables email alerts. */
+  resendKey: env.RESEND_API_KEY || null,
+  /** Sender for alert emails, on a domain verified with the email provider, e.g. "ChangeBounty <alerts@example.com>". */
+  emailFrom: env.EMAIL_FROM || null,
   /** Development only: explicit host:port pairs the fetcher may reach even if private. Refused in production. */
   allowPrivateHosts,
 }

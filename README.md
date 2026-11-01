@@ -16,6 +16,7 @@ Built with [Arc Studio](https://studio.arc.io)
 - Watch it run: the first fetch only sets a baseline and is never paid. Later real text changes become discoveries.
 - Get paid transparently: each confirmed discovery pays once, with the transaction linked on Arc Explorer.
 - Stay in control: cancel any time and withdraw the unused USDC.
+- Get alerts: connect Telegram or email on your job page to hear when a change is paid or a job needs attention.
 - Try the live demo: publish an announcement on a public page and watch the full detect, verify and pay journey.
 
 Website verification relies on a trusted verifier service. See [docs/SECURITY.md](docs/SECURITY.md).
@@ -40,7 +41,7 @@ Build and test:
 ```bash
 bun run contracts:build
 bun run contracts:test   # Foundry: 97 unit, fuzz and invariant tests
-bun run test:server      # 72 URL safety, text extraction, redaction, id and UI helper tests
+bun run test:server      # 83 URL safety, text extraction, redaction, id, alert and UI helper tests
 bun run build            # production web build
 bun run start            # serves the API and the built web app
 bun run check            # lint and typecheck
@@ -72,6 +73,8 @@ Copy `.env.example` to `.env`. Secrets are not kept in `.env`: set `VERIFIER_PRI
 | `RPC_PROXY_BASE_URL`, `RPC_PROXY_TOKEN`, `RPC_PROXY_CHAINS` | Optional outside Arc Studio. Provisioned by Arc Studio. |
 | `CHANGEBOUNTY_SECRETS_FILE` | Optional. Path of the local secrets file. |
 | `TEST_CREATOR_PRIVATE_KEY` | Optional secret. Throwaway testnet key for `bun run e2e:testnet`. |
+| `TELEGRAM_BOT_TOKEN` | Optional secret. Turns on Telegram alerts (bot from @BotFather). |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Optional. Turn on email alerts through Resend; the key is a secret, the sender must be on a verified domain. |
 
 ## Docs
 
@@ -79,5 +82,5 @@ Copy `.env.example` to `.env`. Secrets are not kept in `.env`: set `VERIFIER_PRI
 - [Mainnet runbook](docs/MAINNET_RUNBOOK.md): deploy and run the real USDC demo yourself.
 - [Security notes](docs/SECURITY.md)
 - [90-second demo script](docs/VIDEO_SCRIPT.md)
-- [Notifications plan](docs/NOTIFICATIONS.md): Telegram and email alerts (planned)
+- [Telegram and email alerts](docs/NOTIFICATIONS.md): what triggers them, privacy and setup
 - [Microgrant submission text](docs/SUBMISSION.md)
