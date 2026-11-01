@@ -4,6 +4,12 @@ When the internet changes, agents get paid. ChangeBounty lets you fund a website
 
 Built with [Arc Studio](https://studio.arc.io)
 
+## Live deployment
+
+- App: https://changebounty.ogsnap.online (Arc mainnet, real USDC)
+- Contract on Arc mainnet: [`0x6E5dd3CD48827bDF9C9e40edE6Ed8599b6F60A6e`](https://explorer.arc.io/address/0x6E5dd3CD48827bDF9C9e40edE6Ed8599b6F60A6e)
+- Contract on Arc Testnet: [`0x5575642a6ed082bb01ec95d721af65e5a3db39fe`](https://explorer.testnet.arc.io/address/0x5575642a6ed082bb01ec95d721af65e5a3db39fe), with a full fund, detect, verify and pay run ([payout transaction](https://explorer.testnet.arc.io/tx/0x91ff08e625033bd965dde3d573c850ede0d100b1f795759cf36dbd2de3dedabb))
+
 ## What you can do
 
 - Create a job: connect an Arc wallet, enter a public URL, set a reward per discovery and fund it.
@@ -33,8 +39,8 @@ Build and test:
 
 ```bash
 bun run contracts:build
-bun run contracts:test   # Foundry: unit, fuzz and invariant tests
-bun run test:server      # URL safety, text extraction, redaction, id and UI helper tests
+bun run contracts:test   # Foundry: 97 unit, fuzz and invariant tests
+bun run test:server      # 72 URL safety, text extraction, redaction, id and UI helper tests
 bun run build            # production web build
 bun run start            # serves the API and the built web app
 bun run check            # lint and typecheck

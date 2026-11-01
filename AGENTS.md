@@ -12,17 +12,17 @@ ChangeBounty: users fund website-monitoring jobs with USDC on Arc. An agent hash
 
 - Frontend: React 18, Vite, TypeScript, Tailwind, react-router-dom, wagmi v2, viem, ConnectKit, framer-motion.
 - Server: Bun + node:http in `server/` (SSRF-safe fetcher, monitor, verifier, API). Vite proxies `/api` to :3001. Run with `bun run server`.
-- Contracts: `contracts/ChangeBounty.sol` (OpenZeppelin 5.6.1, Solidity 0.8.28). Tests in `contracts/test/ChangeBounty.t.sol` (88 passing). Server tests: `bun run test:server` (69 passing).
+- Contracts: `contracts/ChangeBounty.sol` (OpenZeppelin 5.6.1, Solidity 0.8.28). Tests in `contracts/test/ChangeBounty.t.sol` (97 passing: 93 unit and fuzz, 4 invariant). Server tests: `bun run test:server` (72 passing).
 
 ## Deployments
 
 - Arc Testnet (5042002): ChangeBounty `0x5575642a6ed082bb01ec95d721af65e5a3db39fe` (deploy tx `0x2e3a20d98020d749c7f71f5cf42854467959c1bcaf3cc5bf086a3bd7ac4c7db3`; the older `0x8cbef3fc…` is superseded: fundJob was made creator-only), verifier `0x4A33CFbf0c0a7C27B6EF0b5eEcBdD17D783c0bca`, owner = platform deployer.
-- Arc mainnet (5042): NOT deployed. The user deploys from their own wallet (docs/MAINNET_RUNBOOK.md).
+- Arc mainnet (5042): ChangeBounty `0x6E5dd3CD48827bDF9C9e40edE6Ed8599b6F60A6e`, deployed by the user from their own wallet (docs/MAINNET_RUNBOOK.md). Verifier `0x21cC87Aa2F796755dBc1Dfd062C824e2017122Fd`, owner `0x8AF54932Ad15304AFdcA549c4b72f52cd505751e`, agent payee `0xAA6F4cD48aaDc424927E534cEd74DfCCB8672Fc2`. Its runtime bytecode (including the metadata hash) matches `contracts/ChangeBounty.sol` built with this repo's `foundry.toml`.
 - Testnet payout proof: tx `0x91ff08e625033bd965dde3d573c850ede0d100b1f795759cf36dbd2de3dedabb`.
 
 ## Production
 
-- Official URL: https://changebounty.ogsnap.online on an Ubuntu VPS. Docker Compose (`docker-compose.yml`) runs the app; host Nginx + Certbot terminate HTTPS. Settings and secrets live in `/opt/changebounty/changebounty.env` on the server (never in the repo). Guide: docs/DEPLOYMENT.md; helper scripts in `deploy/scripts/`.
+- Official URL: https://changebounty.ogsnap.online on an Ubuntu VPS, running Arc mainnet. Docker Compose (`docker-compose.yml`) runs the app; host Nginx + Certbot terminate HTTPS. Settings and secrets live in `/opt/changebounty/changebounty.env` on the server (never in the repo). Guide: docs/DEPLOYMENT.md; helper scripts in `deploy/scripts/`.
 - Hugging Face Docker Spaces require a PRO plan, so they are not used.
 
 ## Rules for editing
