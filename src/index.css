@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #08111f;
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-strong: rgba(255, 255, 255, 0.08);
+  --ink: #f3f6fb;
+  --muted: #a9b6c9;
+  --subtle: #7587a0;
+  --border: rgba(160, 190, 235, 0.14);
+  --signal: #7fb0ff;
+  --pay: #34d399;
+  --danger: #f08a96;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.display {
+  font-family: 'Space Grotesk', sans-serif;
+  letter-spacing: -0.035em;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', Menlo, monospace;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.app-bg {
+  background:
+    radial-gradient(900px 480px at 78% -8%, rgba(127, 176, 255, 0.16), transparent 62%),
+    radial-gradient(700px 420px at -4% 18%, rgba(52, 211, 153, 0.07), transparent 60%),
+    linear-gradient(180deg, #08111f 0%, #0a1628 60%, #0d1b2f 100%);
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-sm;
+  }
+  .card-solid {
+    @apply rounded-2xl border border-white/10 bg-[#0c1a2e];
+  }
+  .label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.1em] text-[#7587a0];
+  }
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#85b1ed] disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98];
+  }
+  .btn-primary {
+    @apply btn bg-[#cbdbf2] text-[#08111f] hover:bg-white;
+  }
+  .btn-pay {
+    @apply btn bg-emerald-400 text-[#052018] hover:bg-emerald-300;
+  }
+  .btn-ghost {
+    @apply btn border border-white/15 bg-white/[0.04] text-[#e3ecf9] hover:bg-white/[0.09];
+  }
+  .btn-danger {
+    @apply btn border border-rose-300/30 bg-rose-400/10 text-rose-200 hover:bg-rose-400/20;
+  }
+  .field {
+    @apply min-h-[48px] w-full rounded-xl border border-white/10 bg-[#0a1628] px-4 text-[15px] text-[#f3f6fb] placeholder:text-[#5f7189] focus:border-[#85b1ed] focus:outline-none focus:ring-2 focus:ring-[#85b1ed]/30;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes scan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.45); }
+  100% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); }
+}
+
+.live-dot {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+iframe.site-frame {
+  background: #f6f4ee;
+}

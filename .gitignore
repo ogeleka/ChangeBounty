@@ -1,0 +1,15 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+.circle
+server/data
+contracts/out
+contracts/cache
+contracts/imported
+traces.jsonl
+console.jsonl
+*.log
+
+**/secrets.env

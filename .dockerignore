@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+.git
+node_modules
+dist
+server/data
+contracts/out
+contracts/cache
+contracts/imported
+.circle
+*.log
+traces.jsonl
+console.jsonl
+**/secrets.env
+**/recovery_file*
