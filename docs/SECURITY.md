@@ -11,7 +11,10 @@ What the contract enforces regardless of the verifier:
 - A discovery id can be paid once per job. Repeats revert.
 - A job can only pay while Active and funded. Creators can cancel and withdraw at any time.
 - Only the creator can add funds to a job. Third-party deposits revert, so nobody can send USDC they cannot get back.
-- The owner can rotate the verifier but cannot touch job funds, and cannot renounce ownership (which would freeze verifier rotation).
+- The owner can propose a new verifier, but it only becomes active 24 hours later (`VERIFIER_DELAY`). The owner must call `activateVerifier` after the delay, and can cancel a pending proposal with `cancelVerifierProposal`. The current verifier keeps paying during the delay, and creators can cancel and withdraw during that window.
+- The owner cannot withdraw job funds directly and cannot renounce ownership (which would freeze verifier rotation).
+
+**Owner power, stated precisely:** after the delay, the owner can still replace the verifier and then pay discoveries. Payouts still go only to each job's fixed agent address, so the owner cannot redirect funds, but it can release escrow early. The delay gives creators and monitors a public 24-hour window to see the proposal and react. Use a dedicated owner wallet, preferably a multisig, and never the verifier key.
 
 If the verifier key were compromised, an attacker could pay fixed rewards from funded, active jobs to their configured agents by submitting made-up discovery ids. Loss is bounded by escrow, and creators can cancel and withdraw (subject to transaction ordering). Use small escrows until you trust the operator.
 

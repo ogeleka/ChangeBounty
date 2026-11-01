@@ -48,6 +48,23 @@ forge create contracts/ChangeBounty.sol:ChangeBounty \
 
 A keystore (`cast wallet import`, then `--account <name>`) is safer than `--private-key`. Record both the **contract address** and the **deployment transaction hash**, and open them on https://explorer.arc.io. The owner can rotate the verifier but can never touch job funds.
 
+### Owner operations (verifier rotation)
+
+The owner is the only account that can change the verifier, and every change has a 24-hour delay. Run these from the owner wallet, with the same signer method as the deployment:
+
+```bash
+# 1. Propose (starts the 24-hour window; the current verifier keeps working)
+cast send <CONTRACT> "proposeVerifier(address)" <NEW_VERIFIER> --rpc-url https://rpc.mainnet.arc.io --account <OWNER_ACCOUNT>
+# 2. Review: pendingVerifier() and verifierActivatableAt() (unix time) are public
+cast call <CONTRACT> "pendingVerifier()(address)" --rpc-url https://rpc.mainnet.arc.io
+# 3. Activate only after verifierActivatableAt has passed
+cast send <CONTRACT> "activateVerifier()" --rpc-url https://rpc.mainnet.arc.io --account <OWNER_ACCOUNT>
+# To abandon a proposal instead:
+cast send <CONTRACT> "cancelVerifierProposal()" --rpc-url https://rpc.mainnet.arc.io --account <OWNER_ACCOUNT>
+```
+
+Creators who see a proposal they do not trust can cancel and withdraw their jobs during the 24 hours.
+
 ## 3. Host the app with persistent storage
 
 The official deployment is the Ubuntu VPS at https://changebounty.ogsnap.online. Follow [DEPLOYMENT.md](DEPLOYMENT.md): Docker Compose with a persistent volume, Nginx and Let's Encrypt. Static-only hosts cannot run the monitoring agent.

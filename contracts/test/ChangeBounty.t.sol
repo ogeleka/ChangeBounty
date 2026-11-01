@@ -821,22 +821,61 @@ contract ChangeBountyTest is Test {
         assertEq(usdc.balanceOf(address(bounty)), FUND);
     }
 
-    // ------------------------------------------------------------ setVerifier
+    // ------------------------------------------------- verifier rotation (timelock)
 
-    function test_SetVerifier_OwnerRotatesAndEmits() public {
+    function test_Verifier_DelayIsTwentyFourHours() public view {
+        assertEq(bounty.VERIFIER_DELAY(), 24 hours);
+    }
+
+    function test_ProposeVerifier_EmitsAndDoesNotChangeActiveVerifier() public {
         address newV = makeAddr("newVerifier");
+        uint64 expected = uint64(block.timestamp) + 24 hours;
+        vm.expectEmit(true, false, false, true, address(bounty));
+        emit ChangeBounty.VerifierProposed(newV, expected);
+        vm.prank(owner);
+        bounty.proposeVerifier(newV);
+        assertEq(bounty.pendingVerifier(), newV);
+        assertEq(bounty.verifierActivatableAt(), expected);
+        assertEq(bounty.verifier(), verifier, "active verifier unchanged until activation");
+    }
+
+    function test_ActivateVerifier_RevertsBeforeDelay() public {
+        address newV = makeAddr("newVerifier");
+        vm.prank(owner);
+        bounty.proposeVerifier(newV);
+        uint64 activatableAt = bounty.verifierActivatableAt();
+
+        vm.warp(block.timestamp + 24 hours - 1);
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(ChangeBounty.VerifierDelayNotElapsed.selector, activatableAt));
+        bounty.activateVerifier();
+        assertEq(bounty.verifier(), verifier);
+    }
+
+    function test_ActivateVerifier_AfterDelay_RotatesAndEmits() public {
+        address newV = makeAddr("newVerifier");
+        vm.prank(owner);
+        bounty.proposeVerifier(newV);
+
+        vm.warp(block.timestamp + 24 hours);
         vm.expectEmit(true, true, false, true, address(bounty));
         emit ChangeBounty.VerifierUpdated(verifier, newV);
         vm.prank(owner);
-        bounty.setVerifier(newV);
+        bounty.activateVerifier();
+
         assertEq(bounty.verifier(), newV);
+        assertEq(bounty.pendingVerifier(), address(0));
+        assertEq(bounty.verifierActivatableAt(), 0);
     }
 
-    function test_SetVerifier_OldVerifierLosesRightsNewGains() public {
+    function test_ActivateVerifier_OldVerifierLosesRightsNewGains() public {
         uint256 id = _create(FUND);
         address newV = makeAddr("newVerifier");
         vm.prank(owner);
-        bounty.setVerifier(newV);
+        bounty.proposeVerifier(newV);
+        vm.warp(block.timestamp + 24 hours);
+        vm.prank(owner);
+        bounty.activateVerifier();
 
         vm.prank(verifier);
         vm.expectRevert(ChangeBounty.NotVerifier.selector);
@@ -847,20 +886,103 @@ contract ChangeBountyTest is Test {
         assertEq(usdc.balanceOf(agent), REWARD);
     }
 
-    function test_RevertSetVerifier_NonOwner() public {
+    function test_ProposalWindow_CurrentVerifierStillPays() public {
+        uint256 id = _create(FUND);
+        vm.prank(owner);
+        bounty.proposeVerifier(makeAddr("newVerifier"));
+
+        vm.warp(block.timestamp + 24 hours - 1);
+        vm.prank(verifier);
+        bounty.payDiscovery(id, D1);
+        assertEq(usdc.balanceOf(agent), REWARD);
+    }
+
+    function test_ProposalWindow_CreatorCanCancelAndWithdraw() public {
+        uint256 id = _create(FUND);
+        vm.prank(owner);
+        bounty.proposeVerifier(makeAddr("newVerifier"));
+
+        uint256 creatorBefore = usdc.balanceOf(creator);
+        vm.prank(creator);
+        bounty.cancelAndWithdraw(id);
+        assertEq(usdc.balanceOf(creator), creatorBefore + FUND);
+        assertEq(usdc.balanceOf(address(bounty)), 0);
+    }
+
+    function test_ReProposal_RestartsDelay() public {
+        address first = makeAddr("first");
+        address second = makeAddr("second");
+        vm.prank(owner);
+        bounty.proposeVerifier(first);
+        vm.warp(block.timestamp + 23 hours);
+        vm.prank(owner);
+        bounty.proposeVerifier(second);
+        assertEq(bounty.pendingVerifier(), second);
+
+        vm.warp(block.timestamp + 2 hours);
+        vm.prank(owner);
+        vm.expectRevert();
+        bounty.activateVerifier();
+
+        vm.warp(block.timestamp + 22 hours);
+        vm.prank(owner);
+        bounty.activateVerifier();
+        assertEq(bounty.verifier(), second);
+    }
+
+    function test_CancelVerifierProposal_ClearsAndBlocksActivation() public {
+        address newV = makeAddr("newVerifier");
+        vm.prank(owner);
+        bounty.proposeVerifier(newV);
+        vm.expectEmit(true, false, false, false, address(bounty));
+        emit ChangeBounty.VerifierProposalCancelled(newV);
+        vm.prank(owner);
+        bounty.cancelVerifierProposal();
+        assertEq(bounty.pendingVerifier(), address(0));
+
+        vm.warp(block.timestamp + 48 hours);
+        vm.prank(owner);
+        vm.expectRevert(ChangeBounty.NoVerifierProposal.selector);
+        bounty.activateVerifier();
+        assertEq(bounty.verifier(), verifier);
+    }
+
+    function test_RevertActivateOrCancel_WithoutProposal() public {
+        vm.prank(owner);
+        vm.expectRevert(ChangeBounty.NoVerifierProposal.selector);
+        bounty.activateVerifier();
+        vm.prank(owner);
+        vm.expectRevert(ChangeBounty.NoVerifierProposal.selector);
+        bounty.cancelVerifierProposal();
+    }
+
+    function test_RevertProposeVerifier_NonOwner() public {
         vm.prank(other);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, other));
-        bounty.setVerifier(other);
+        bounty.proposeVerifier(other);
         // the verifier itself has no owner rights either
         vm.prank(verifier);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, verifier));
-        bounty.setVerifier(other);
+        bounty.proposeVerifier(other);
     }
 
-    function test_RevertSetVerifier_Zero() public {
+    function test_RevertActivateAndCancel_NonOwner() public {
+        vm.prank(owner);
+        bounty.proposeVerifier(other);
+        vm.warp(block.timestamp + 24 hours);
+        vm.prank(other);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, other));
+        bounty.activateVerifier();
+        vm.prank(other);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, other));
+        bounty.cancelVerifierProposal();
+    }
+
+    function test_RevertProposeVerifier_Zero() public {
         vm.prank(owner);
         vm.expectRevert(ChangeBounty.ZeroAddress.selector);
-        bounty.setVerifier(address(0));
+        bounty.proposeVerifier(address(0));
+        assertEq(bounty.pendingVerifier(), address(0));
         assertEq(bounty.verifier(), verifier);
     }
 
@@ -886,10 +1008,10 @@ contract ChangeBountyTest is Test {
         // old owner lost authority, new owner has it
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, owner));
-        bounty.setVerifier(other);
+        bounty.proposeVerifier(other);
         vm.prank(newOwner);
-        bounty.setVerifier(other);
-        assertEq(bounty.verifier(), other);
+        bounty.proposeVerifier(other);
+        assertEq(bounty.pendingVerifier(), other);
     }
 
     function test_RevertOwnable2Step_AcceptByNonPending() public {
@@ -916,8 +1038,8 @@ contract ChangeBountyTest is Test {
         // owner retains authority
         address newV = makeAddr("newVerifier");
         vm.prank(owner);
-        bounty.setVerifier(newV);
-        assertEq(bounty.verifier(), newV);
+        bounty.proposeVerifier(newV);
+        assertEq(bounty.pendingVerifier(), newV);
     }
 
     function test_RenounceOwnership_NonOwnerReverts_RenounceDisabled() public {

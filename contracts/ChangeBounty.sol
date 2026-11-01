@@ -15,7 +15,9 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * from Active jobs to their configured agents, bounded by each job's funded balance.
  * It can fabricate distinct discovery IDs and exhaust those balances. Creators can
  * cancel and withdraw at any time, subject to transaction ordering and funds remaining.
- * The owner can rotate the verifier but has no authority to withdraw job funds.
+ * The owner can propose a new verifier, which activates only after VERIFIER_DELAY (24 hours).
+ * During that window the current verifier keeps working and creators can cancel and withdraw.
+ * The owner has no authority to withdraw job funds directly.
  * Amounts are expressed in USDC base units (6 decimals). On Arc, deploy with USDC at
  * 0x3600000000000000000000000000000000000000; the token address is immutable.
  * Intended for Solidity 0.8.28, Cancun, and OpenZeppelin Contracts 5.6.1.
@@ -51,8 +53,12 @@ contract ChangeBounty is Ownable2Step, ReentrancyGuard {
     error InsufficientJobBalance();
     error NothingToWithdraw();
     error RenounceDisabled();
+    error NoVerifierProposal();
+    error VerifierDelayNotElapsed(uint64 activatableAt);
     error UnexpectedFundingReceived(uint256 requested, uint256 balanceBefore, uint256 balanceAfter);
 
+    event VerifierProposed(address indexed proposedVerifier, uint64 activatableAt);
+    event VerifierProposalCancelled(address indexed proposedVerifier);
     event VerifierUpdated(address indexed previousVerifier, address indexed newVerifier);
     event JobCreated(
         uint256 indexed jobId,
@@ -75,8 +81,14 @@ contract ChangeBounty is Ownable2Step, ReentrancyGuard {
 
     /// @notice Immutable USDC token used for every job.
     IERC20 public immutable usdc;
+    /// @notice Delay between proposing a verifier and being able to activate it.
+    uint64 public constant VERIFIER_DELAY = 24 hours;
     /// @notice Trusted service authorized to pay discoveries.
     address public verifier;
+    /// @notice Verifier waiting for activation; zero when no proposal is pending.
+    address public pendingVerifier;
+    /// @notice Earliest timestamp at which the pending verifier can be activated.
+    uint64 public verifierActivatableAt;
     /// @notice Number of jobs created; the first job ID is 1.
     uint256 public jobCount;
 
@@ -101,12 +113,36 @@ contract ChangeBounty is Ownable2Step, ReentrancyGuard {
         revert RenounceDisabled();
     }
 
-    /// @notice Rotate the trusted verifier without changing job configuration or funds.
-    function setVerifier(address newVerifier) external onlyOwner {
+    /// @notice Propose a new verifier. It becomes active only after VERIFIER_DELAY.
+    /// @dev A new proposal replaces any pending one and restarts the delay. The current
+    /// verifier stays authorised until activation, so the delay is a public review window.
+    function proposeVerifier(address newVerifier) external onlyOwner {
         if (newVerifier == address(0)) revert ZeroAddress();
+        uint64 activatableAt = uint64(block.timestamp) + VERIFIER_DELAY;
+        pendingVerifier = newVerifier;
+        verifierActivatableAt = activatableAt;
+        emit VerifierProposed(newVerifier, activatableAt);
+    }
+
+    /// @notice Activate the pending verifier once the delay has elapsed.
+    function activateVerifier() external onlyOwner {
+        address proposed = pendingVerifier;
+        if (proposed == address(0)) revert NoVerifierProposal();
+        if (block.timestamp < verifierActivatableAt) revert VerifierDelayNotElapsed(verifierActivatableAt);
         address previousVerifier = verifier;
-        verifier = newVerifier;
-        emit VerifierUpdated(previousVerifier, newVerifier);
+        verifier = proposed;
+        pendingVerifier = address(0);
+        verifierActivatableAt = 0;
+        emit VerifierUpdated(previousVerifier, proposed);
+    }
+
+    /// @notice Discard a pending verifier proposal. The current verifier is unchanged.
+    function cancelVerifierProposal() external onlyOwner {
+        address proposed = pendingVerifier;
+        if (proposed == address(0)) revert NoVerifierProposal();
+        pendingVerifier = address(0);
+        verifierActivatableAt = 0;
+        emit VerifierProposalCancelled(proposed);
     }
 
     /**

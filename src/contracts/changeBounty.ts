@@ -16,7 +16,15 @@ export const changeBountyAbi = parseAbi([
   'function cancelJob(uint256 jobId)',
   'function withdrawUnused(uint256 jobId)',
   'function cancelAndWithdraw(uint256 jobId)',
-  'function setVerifier(address newVerifier)',
+  'function pendingVerifier() view returns (address)',
+  'function verifierActivatableAt() view returns (uint64)',
+  'function VERIFIER_DELAY() view returns (uint64)',
+  'function proposeVerifier(address newVerifier)',
+  'function activateVerifier()',
+  'function cancelVerifierProposal()',
+  'event VerifierProposed(address indexed proposedVerifier, uint64 activatableAt)',
+  'event VerifierProposalCancelled(address indexed proposedVerifier)',
+  'event VerifierUpdated(address indexed previousVerifier, address indexed newVerifier)',
   'event JobCreated(uint256 indexed jobId, address indexed creator, address indexed agent, uint128 reward, string url, bytes32 urlHash)',
   'event JobFunded(uint256 indexed jobId, address indexed funder, uint128 amount, uint128 newBalance)',
   'event DiscoveryPaid(uint256 indexed jobId, bytes32 indexed discoveryId, address indexed agent, uint128 reward, address verifier)',
@@ -35,6 +43,8 @@ export const changeBountyAbi = parseAbi([
   'error InsufficientJobBalance()',
   'error NothingToWithdraw()',
   'error RenounceDisabled()',
+  'error NoVerifierProposal()',
+  'error VerifierDelayNotElapsed(uint64 activatableAt)',
 ])
 
 /** Mirrors `enum Status { Active, Cancelled }`. */
