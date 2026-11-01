@@ -9,6 +9,7 @@ Built with [Arc Studio](https://studio.arc.io)
 - Create a job: connect an Arc wallet, enter a public URL, set a reward per discovery and fund it.
 - Watch it run: the first fetch only sets a baseline and is never paid. Later real text changes become discoveries.
 - Get paid transparently: each confirmed discovery pays once, with the transaction linked on Arc Explorer.
+- Get alerts: follow a job by email or Telegram and hear when a change is detected, confirmed, paid or needs attention.
 - Stay in control: cancel any time and withdraw the unused USDC.
 - Try the live demo: publish an announcement on a public page and watch the full detect, verify and pay journey.
 
@@ -48,7 +49,7 @@ Production runs with Docker Compose behind Nginx and Let's Encrypt on an Ubuntu 
 
 ### Environment variables
 
-Copy `.env.example` to `.env`. Secrets are not kept in `.env`: set `VERIFIER_PRIVATE_KEY` and `DEMO_ADMIN_TOKEN` as host secrets, or let `bun run setup:wallets` store them in `~/.changebounty/secrets.env`.
+Copy `.env.example` to `.env`. Secrets are not kept in `.env`: set `VERIFIER_PRIVATE_KEY`, `DEMO_ADMIN_TOKEN`, `TELEGRAM_BOT_TOKEN` and `RESEND_API_KEY` as host secrets, or let `bun run setup:wallets` store them in `~/.changebounty/secrets.env`.
 
 | Name | Purpose |
 | --- | --- |
@@ -59,6 +60,10 @@ Copy `.env.example` to `.env`. Secrets are not kept in `.env`: set `VERIFIER_PRI
 | `VERIFIER_PRIVATE_KEY` | Secret, server only. Signs payouts. Needs a little USDC for gas. |
 | `DEMO_ADMIN_TOKEN` | Secret, server only. Protects the demo publish button. |
 | `PUBLIC_BASE_URL` | Public origin of the deployed app, used for the demo page address. |
+| `TELEGRAM_BOT_TOKEN` | Secret. Token from @BotFather. Turns on Telegram alerts. |
+| `RESEND_API_KEY` | Secret. Resend API key. Turns on email alerts together with `EMAIL_FROM`. |
+| `EMAIL_FROM` | Sender of alert emails, on a domain verified in Resend, for example `ChangeBounty <alerts@yourdomain>`. |
+| `MAX_SUBSCRIBERS_PER_JOB` | Optional. Cap on followers per job (default 50). |
 | `DATA_DIR` | Where monitoring state is stored. |
 | `POLL_INTERVAL_SEC`, `VERIFY_DELAY_SEC`, `MIN_CHANGE_CHARS`, `MIN_REWARD_USDC`, `PAYOUT_COOLDOWN_SEC`, `MAX_JOBS_PER_CREATOR` | Optional tuning. |
 | `ALLOW_PRIVATE_FETCH_HOSTS` | Development only. Must be empty in production. |

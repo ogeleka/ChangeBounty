@@ -11,9 +11,11 @@ const SKIP_FILES = new Set(['bun.lock', 'traces.jsonl', 'console.jsonl'])
 const SKIP_EXT = /\.(png|jpe?g|gif|ico|woff2?|map|lock)$/i
 
 // name = long hex or opaque token value
-const ASSIGNMENT = /\b(PRIVATE_KEY|SECRET|ADMIN_TOKEN|API_KEY|ACCESS_TOKEN|MNEMONIC|SEED_PHRASE)\w*\s*[=:]\s*['"]?(0x)?[0-9a-zA-Z_\-+/]{24,}/i
+const ASSIGNMENT = /\b(PRIVATE_KEY|SECRET|ADMIN_TOKEN|API_KEY|ACCESS_TOKEN|BOT_TOKEN|MNEMONIC|SEED_PHRASE)\w*\s*[=:]\s*['"]?(0x)?[0-9a-zA-Z_\-+/]{24,}/i
 const BEARER = /Bearer\s+[A-Za-z0-9._~+/-]{20,}/
 const TOKEN_IN_URL = /[?&](_rpc_token|token|api_?key|access_token)=[A-Za-z0-9._~-]{12,}/i
+const TELEGRAM_TOKEN = /\b\d{8,12}:[A-Za-z0-9_-]{35}\b/
+const RESEND_KEY = /\bre_[A-Za-z0-9]{6,}_[A-Za-z0-9]{16,}\b/
 const RAW_KEY = /\b0x[0-9a-fA-F]{64}\b/
 
 const findings: string[] = []
@@ -34,12 +36,14 @@ function walk(dir: string): void {
     lines.forEach((line, i) => {
       const where = `${rel}:${i + 1}`
       if (name === '.env') {
-        if (/^(VERIFIER_PRIVATE_KEY|DEMO_ADMIN_TOKEN|TEST_CREATOR_PRIVATE_KEY)=.+/.test(line)) findings.push(`${where} secret value stored in .env (move it to the secrets file or host secrets)`)
+        if (/^(VERIFIER_PRIVATE_KEY|DEMO_ADMIN_TOKEN|TEST_CREATOR_PRIVATE_KEY|TELEGRAM_BOT_TOKEN|RESEND_API_KEY)=.+/.test(line)) findings.push(`${where} secret value stored in .env (move it to the secrets file or host secrets)`)
         return
       }
       if (name === '.env.example') return
       if (ASSIGNMENT.test(line) && !/process\.env|import\.meta\.env|\$\{|<[A-Z_]+>|\.\.\.$/.test(line)) findings.push(`${where} credential-like assignment`)
       if (BEARER.test(line) && !/\$\{|\[redacted\]|`Bearer/.test(line)) findings.push(`${where} bearer token`)
+      if (TELEGRAM_TOKEN.test(line)) findings.push(`${where} Telegram bot token`)
+      if (RESEND_KEY.test(line)) findings.push(`${where} Resend API key`)
       if (TOKEN_IN_URL.test(line)) findings.push(`${where} token in URL`)
       // A bare 32-byte hex is also a transaction hash; only flag it next to key-ish words.
       if (RAW_KEY.test(line) && /(private|secret|mnemonic|signer|key)/i.test(line) && !/(public|hash|tx|discovery|baseline|id)/i.test(line)) findings.push(`${where} possible private key`)

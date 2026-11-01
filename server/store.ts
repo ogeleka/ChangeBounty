@@ -2,12 +2,16 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { join } from 'node:path'
 import { config } from './config'
 import { redact } from './redact'
-import type { Announcement, Discovery, JobEvent, JobEventType, MonitoredJob } from './types'
+import type { Announcement, Discovery, JobEvent, JobEventType, MonitoredJob, Subscription } from './types'
 
 interface State {
   jobs: Record<string, MonitoredJob>
   discoveries: Record<string, Discovery>
   announcements: Announcement[]
+  /** Notification subscribers. Contains email addresses: never exposed through the API. */
+  subscriptions: Record<string, Subscription>
+  /** Keys of notifications already delivered, so a restart or a retry never sends one twice. */
+  notifySent: string[]
   /** Last block scanned for contract events. Lets a restart (or a wiped disk) resume instead of rescanning. */
   cursor?: string
 }
@@ -18,7 +22,7 @@ const suffix = config.contract ? config.contract.slice(2, 10).toLowerCase() : 'n
 const file = join(config.dataDir, `state-${config.network}-${suffix}.json`)
 
 function emptyState(): State {
-  return { jobs: {}, discoveries: {}, announcements: [] }
+  return { jobs: {}, discoveries: {}, announcements: [], subscriptions: {}, notifySent: [] }
 }
 
 function load(): State {
@@ -76,7 +80,31 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
 }
 process.on('beforeExit', flush)
 
+type EventListener = (job: MonitoredJob, event: JobEvent) => void
+const listeners = new Set<EventListener>()
+
 export const store = {
+  onEvent(fn: EventListener): void {
+    listeners.add(fn)
+  },
+  subscriptions: (): Subscription[] => Object.values(state.subscriptions),
+  subscription: (id: string): Subscription | undefined => state.subscriptions[id],
+  putSubscription(s: Subscription): void {
+    state.subscriptions[s.id] = s
+    persist()
+  },
+  deleteSubscription(id: string): void {
+    delete state.subscriptions[id]
+    persist()
+  },
+  /** Returns true the first time a key is seen, false if that notification was already delivered. */
+  markSent(key: string): boolean {
+    if (state.notifySent.includes(key)) return false
+    state.notifySent.push(key)
+    if (state.notifySent.length > 3000) state.notifySent.splice(0, state.notifySent.length - 3000)
+    persist()
+    return true
+  },
   file,
   flush,
   jobs: () => Object.values(state.jobs),
@@ -94,7 +122,15 @@ export const store = {
     persist()
   },
   addEvent(job: MonitoredJob, type: JobEventType, message: string, extra: Partial<JobEvent> = {}): void {
-    job.events.push({ t: Date.now(), type, message: redact(message, true), ...extra })
+    const event: JobEvent = { t: Date.now(), type, message: redact(message, true), ...extra }
+    job.events.push(event)
+    for (const fn of listeners) {
+      try {
+        fn(job, event)
+      } catch {
+        /* a notification problem must never break monitoring */
+      }
+    }
     if (job.events.length > MAX_EVENTS) {
       // Keep the most recent entries but never drop the first (registered) entry.
       job.events.splice(1, job.events.length - MAX_EVENTS)

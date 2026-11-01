@@ -105,6 +105,7 @@ export interface PublicConfig {
   demoPublishEnabled: boolean
   verifierReady: boolean
   minRewardRaw: string
+  notifications: { email: boolean; telegramBot: string | null }
 }
 
 export interface SyncStatus {
@@ -114,4 +115,20 @@ export interface SyncStatus {
   blocksBehind?: string
   lastError?: string
   lastRunAt?: number
+}
+
+export type NotifyChannel = 'email' | 'telegram'
+
+export interface Subscription {
+  id: string
+  jobId: string
+  channel: NotifyChannel
+  /** Email address or Telegram chat id. Never returned by any API. */
+  target: string
+  status: 'pending' | 'active'
+  /** Random token used for the confirmation and unsubscribe links. */
+  token: string
+  createdAt: number
+  confirmedAt?: number
+  lastConfirmSentAt?: number
 }

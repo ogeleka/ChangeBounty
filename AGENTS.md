@@ -25,6 +25,10 @@ ChangeBounty: users fund website-monitoring jobs with USDC on Arc. An agent hash
 - Official URL: https://changebounty.ogsnap.online on an Ubuntu VPS. Docker Compose (`docker-compose.yml`) runs the app; host Nginx + Certbot terminate HTTPS. Settings and secrets live in `/opt/changebounty/changebounty.env` on the server (never in the repo). Guide: docs/DEPLOYMENT.md; helper scripts in `deploy/scripts/`.
 - Hugging Face Docker Spaces require a PRO plan, so they are not used.
 
+## Alerts
+
+Telegram (polling bot) and email (Resend) alerts live in `server/notify/`. Secrets: `TELEGRAM_BOT_TOKEN`, `RESEND_API_KEY`; non-secret: `EMAIL_FROM`. Messages never include monitored page text. Subscribers are stored in the state file and never exposed by the API.
+
 ## Rules for editing
 
 - Network and addresses come from `.env` (`VITE_ARC_NETWORK`, `VITE_CHANGEBOUNTY_ADDRESS`, `VITE_AGENT_ADDRESS`) via `/api/config`; chain and USDC facts come from `@/onchain-facts`.

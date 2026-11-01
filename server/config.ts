@@ -54,6 +54,12 @@ function loadVerifierKey(): Hex | null {
   return isHex(key) && key.length === 66 ? key : null
 }
 
+const EMAIL_FROM_RE = /^(?:[^<>\r\n@]{1,80}<[^<>\s@]+@[^<>\s@]+\.[^<>\s@]+>|[^<>\s@]+@[^<>\s@]+\.[^<>\s@]+)$/
+const emailFrom = env.EMAIL_FROM && EMAIL_FROM_RE.test(env.EMAIL_FROM.trim()) ? env.EMAIL_FROM.trim() : null
+// A Telegram bot token looks like 123456789:AA... ; anything else is treated as not configured.
+const telegramToken = env.TELEGRAM_BOT_TOKEN && /^\d{5,12}:[A-Za-z0-9_-]{20,60}$/.test(env.TELEGRAM_BOT_TOKEN.trim()) ? env.TELEGRAM_BOT_TOKEN.trim() : null
+const resendKey = env.RESEND_API_KEY && /^re_[A-Za-z0-9_-]{10,100}$/.test(env.RESEND_API_KEY.trim()) ? env.RESEND_API_KEY.trim() : null
+
 const verifierKey = loadVerifierKey()
 // Hugging Face Spaces (and most container hosts) route to 7860; local development uses 3001.
 const onSpace = Boolean(env.SPACE_ID)
@@ -108,6 +114,11 @@ export const config = {
   payoutCooldownMs: intEnv('PAYOUT_COOLDOWN_SEC', 30, 0, 3600) * 1000,
   minChangeChars: intEnv('MIN_CHANGE_CHARS', 24, 1, 10_000),
   minRewardRaw: minReward(),
+  /** Notification channels. Secrets: server only, never serialised into any response. */
+  telegramToken,
+  resendKey,
+  emailFrom,
+  maxSubscribersPerJob: intEnv('MAX_SUBSCRIBERS_PER_JOB', 50, 1, 1000),
   maxJobsPerCreator: intEnv('MAX_JOBS_PER_CREATOR', 5, 1, 100),
   dataDir: env.DATA_DIR ?? 'server/data',
   /** Development only: explicit host:port pairs the fetcher may reach even if private. Refused in production. */

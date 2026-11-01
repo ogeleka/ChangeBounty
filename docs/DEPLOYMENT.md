@@ -142,6 +142,50 @@ Every line must say PASS (HTTPS, redirect, API health, config, demo page served 
 
 The monitoring agent fetches the demo page through the real public domain, so this also proves the agent can reach the site. It runs the same safe-fetch code that blocks private addresses.
 
+## 8a. Subscriber alerts: Telegram and email (optional)
+
+Subscribers can follow any job from its page and get a message when a change is detected, when the reward is paid, when the verifier rejects a change, or when the job needs attention. A channel stays off, and its form stays hidden, until its settings are present. The messages never contain text copied from the monitored website, only facts the service generates plus links to the job and the transaction.
+
+**Telegram**
+
+1. In Telegram open **@BotFather**, send `/newbot`, choose a name and a username ending in `bot`, and copy the token it gives you.
+2. On the VPS add the token to the settings file and restart:
+
+   ```bash
+   sudo nano /opt/changebounty/changebounty.env      # add: TELEGRAM_BOT_TOKEN=<token from BotFather>
+   cd /srv/changebounty && sudo docker compose up -d --force-recreate
+   ```
+
+3. Confirm it is on (the log line shows your bot name):
+
+   ```bash
+   sudo docker compose logs app | grep notify
+   ```
+
+The bot collects messages by polling, so no webhook or extra port is needed. Starting the app clears any webhook previously set on that bot, and only one running copy of the app should use a given bot token.
+
+**Email (Resend)**
+
+1. In the Resend dashboard open **Domains > Add Domain** and add `ogsnap.online` (or a subdomain such as `mail.ogsnap.online`). Resend lists the DNS records it needs. Add each one in Cloudflare exactly as shown, with the cloud **grey (DNS only)**, and wait until Resend shows the domain as **Verified**.
+2. Open **API Keys > Create API Key** with sending access only, and copy the key (it starts with `re_`).
+3. Add three lines to the settings file and restart. `EMAIL_FROM` must use an address on the domain you verified:
+
+   ```bash
+   sudo nano /opt/changebounty/changebounty.env
+   #   RESEND_API_KEY=re_...your key...
+   #   EMAIL_FROM=ChangeBounty <alerts@ogsnap.online>
+   cd /srv/changebounty && sudo docker compose up -d --force-recreate
+   sudo docker compose logs app | grep notify
+   ```
+
+**Test both channels**
+
+1. Open a job page on the site and, under **Get alerts**, enter your email and press **Notify me**. Open the confirmation email and press **Confirm alerts**. Press **Telegram alerts**, then **Open Telegram and press Start**.
+2. Trigger a real event from the **Live demo** page by publishing an announcement. You will get "Change detected", then "Payout sent" with the transaction link.
+3. Every email has an unsubscribe link, and `/stop` in Telegram removes all alerts for that chat.
+
+Subscriber addresses are stored only in the server data volume, never in the API, the repository or logs. `deploy/scripts/backup.sh` backups therefore contain them: keep `/var/backups/changebounty` private (it is mode 750 and the archives are mode 600).
+
 ## 9. Day-to-day operations
 
 ```bash
@@ -233,6 +277,7 @@ Do not skip the testnet journey if you have not done it. Mainnet moves real USDC
 | `502 Bad Gateway` | `docker compose ps` must show `healthy`; test `curl http://127.0.0.1:7860/api/health`. |
 | Certbot fails | DNS must resolve to the VPS and be **grey cloud**; ports 80 and 443 open in UFW and the Contabo firewall. |
 | Demo page never detected | `curl -s https://changebounty.ogsnap.online/api/demo-site/announcements` from the VPS; check Cloudflare bot rules (section 10). |
+| No Telegram or email form on job pages | The settings are missing or invalid. Check `docker compose logs app \| grep notify`: it says `email on/off, telegram on/off`. |
 | Payouts say verifier not authorised | The contract's verifier must equal the verifier address from step 4. |
 | Status `blocksBehind` large in `/api/health` | The chain scan is still catching up; wait, and make sure `VITE_CHANGEBOUNTY_DEPLOY_TX` is set. |
 

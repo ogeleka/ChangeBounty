@@ -3,6 +3,7 @@ import { ArrowLeft, ExternalLink, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import JobTimeline from '@/components/JobTimeline'
+import NotifyCard from '@/components/NotifyCard'
 import { Empty, Reveal, Spinner, Stat, StatusPill, TxLink } from '@/components/ui'
 import { describeError, useBounty } from '@/hooks/useBounty'
 import { ApiError, postJson, useJob, type Discovery, type JobView } from '@/lib/api'
@@ -221,6 +222,7 @@ export default function JobDetails() {
         </section>
         <aside className="space-y-6">
           {isCreator && <CreatorPanel job={job} />}
+          <NotifyCard jobId={job.id} />
           <section aria-labelledby="tl">
             <h2 id="tl" className="display mb-3 text-2xl font-semibold">Activity</h2>
             <div className="card p-3"><JobTimeline events={job.events} chainId={cfg.chainId} /></div>

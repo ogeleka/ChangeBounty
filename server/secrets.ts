@@ -9,7 +9,7 @@ import { join } from 'node:path'
  */
 export const SECRETS_FILE = process.env.CHANGEBOUNTY_SECRETS_FILE ?? join(homedir(), '.changebounty', 'secrets.env')
 
-const ALLOWED = new Set(['VERIFIER_PRIVATE_KEY', 'DEMO_ADMIN_TOKEN', 'TEST_CREATOR_PRIVATE_KEY'])
+const ALLOWED = new Set(['VERIFIER_PRIVATE_KEY', 'DEMO_ADMIN_TOKEN', 'TEST_CREATOR_PRIVATE_KEY', 'TELEGRAM_BOT_TOKEN', 'RESEND_API_KEY'])
 
 export function loadSecrets(): void {
   if (!existsSync(SECRETS_FILE)) return

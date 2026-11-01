@@ -9,6 +9,8 @@ import { config } from './config'
 import { publishAnnouncement, renderAnnouncementsPage, tokenMatches } from './demoSite'
 import { checkJob, registerFromTx, startMonitor } from './monitor'
 import { redact } from './redact'
+import { confirmSubscription, createTelegramLink, initNotifications, notificationInfo, NotifyError, requestEmailSubscription, unsubscribe } from './notify/service'
+import { noticePage } from './notify/templates'
 import { checkUrlSyntax, UnsafeUrlError, validatePublicUrl } from './ssrf'
 import { store } from './store'
 import type { JobView, MonitoredJob, PublicConfig } from './types'
@@ -118,6 +120,7 @@ function publicConfig(): PublicConfig {
     demoPublishEnabled: config.adminToken !== null,
     verifierReady: config.verifierKey !== null && config.contract !== null,
     minRewardRaw: config.minRewardRaw.toString(),
+    notifications: notificationInfo(),
   }
 }
 
@@ -178,6 +181,40 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       return send(res, 201, publishAnnouncement(body.title, body.body))
     } catch (err) {
       throw new HttpError(400, err instanceof Error ? err.message : 'Invalid announcement.')
+    }
+  }
+
+  const NOTICE_CSP = { 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'" }
+  if (path === '/api/notify/confirm' && method === 'GET') {
+    limit(req, 'notify-link', 60, 60_000)
+    const token = url.searchParams.get('token') ?? ''
+    const sub = token.length >= 16 && token.length <= 64 ? confirmSubscription(token) : null
+    return send(res, sub ? 200 : 400, sub ? noticePage('Alerts confirmed', `You will get alerts for job #${sub.jobId}. Every message has an unsubscribe link.`) : noticePage('Link not valid', 'This confirmation link is invalid or has expired. Request a new one from the job page.'), NOTICE_CSP)
+  }
+  if (path === '/api/notify/unsubscribe' && (method === 'GET' || method === 'POST')) {
+    limit(req, 'notify-link', 60, 60_000)
+    const token = url.searchParams.get('token') ?? ''
+    const sub = token.length >= 16 && token.length <= 64 ? unsubscribe(token) : null
+    // POST is the one-click unsubscribe sent by mail providers; GET is the link in the email footer.
+    if (method === 'POST') return send(res, 200, { ok: true })
+    return send(res, 200, sub ? noticePage('Unsubscribed', 'You will not receive any more alerts for this job.') : noticePage('Already unsubscribed', 'This link was already used or is no longer valid.'), NOTICE_CSP)
+  }
+
+  const subMatch = /^\/api\/jobs\/(\d{1,18})\/subscribe\/(email|telegram)$/.exec(path)
+  if (subMatch && method === 'POST') {
+    const [, jobId, channel] = subMatch
+    try {
+      if (channel === 'email') {
+        limit(req, 'sub-email', 5, 3_600_000)
+        const body = await readJson(req)
+        await requestEmailSubscription(jobId, body.email)
+        return send(res, 202, { ok: true, message: 'If that address is valid, a confirmation email is on its way.' })
+      }
+      limit(req, 'sub-telegram', 20, 3_600_000)
+      return send(res, 200, { url: createTelegramLink(jobId) })
+    } catch (err) {
+      if (err instanceof NotifyError) throw new HttpError(err.message === 'Job not found.' ? 404 : 400, err.message)
+      throw err
     }
   }
 
@@ -268,6 +305,7 @@ server.listen(config.port, () => {
   refreshGas()
   // Reconcile with the chain, settle anything a restart interrupted, then begin polling.
   void (async () => {
+    await initNotifications().catch((err: unknown) => console.error('[notify]', revertMessage(err)))
     await syncFromChain()
     await recoverInterrupted().catch((err: unknown) => console.error('[recover]', revertMessage(err)))
     startMonitor(syncFromChain)
