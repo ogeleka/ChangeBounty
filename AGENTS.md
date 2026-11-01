@@ -20,6 +20,11 @@ ChangeBounty: users fund website-monitoring jobs with USDC on Arc. An agent hash
 - Arc mainnet (5042): NOT deployed. The user deploys from their own wallet (docs/MAINNET_RUNBOOK.md).
 - Testnet payout proof: tx `0x91ff08e625033bd965dde3d573c850ede0d100b1f795759cf36dbd2de3dedabb`.
 
+## Production
+
+- Official URL: https://changebounty.ogsnap.online on an Ubuntu VPS. Docker Compose (`docker-compose.yml`) runs the app; host Nginx + Certbot terminate HTTPS. Settings and secrets live in `/opt/changebounty/changebounty.env` on the server (never in the repo). Guide: docs/DEPLOYMENT.md; helper scripts in `deploy/scripts/`.
+- Hugging Face Docker Spaces require a PRO plan, so they are not used.
+
 ## Rules for editing
 
 - Network and addresses come from `.env` (`VITE_ARC_NETWORK`, `VITE_CHANGEBOUNTY_ADDRESS`, `VITE_AGENT_ADDRESS`) via `/api/config`; chain and USDC facts come from `@/onchain-facts`.

@@ -13,3 +13,6 @@ console.jsonl
 *.log
 
 **/secrets.env
+
+deploy/*.env
+/opt/

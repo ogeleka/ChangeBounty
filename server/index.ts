@@ -70,7 +70,7 @@ async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> 
 /** Fixed-window limiter keyed by client address and bucket. In-memory: adequate for a single instance. */
 const hits = new Map<string, number[]>()
 function limit(req: IncomingMessage, bucket: string, max: number, windowMs: number): void {
-  const forwarded = process.env.TRUST_PROXY === '1' ? (String(req.headers['x-forwarded-for'] ?? '').split(',').pop() ?? '').trim() : ''
+  const forwarded = process.env.TRUST_PROXY === '1' || process.env.SPACE_ID ? (String(req.headers['x-forwarded-for'] ?? '').split(',').pop() ?? '').trim() : ''
   const key = `${bucket}:${forwarded || req.socket.remoteAddress || 'unknown'}`
   const now = Date.now()
   const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs)

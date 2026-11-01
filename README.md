@@ -41,9 +41,10 @@ bun run check            # lint and typecheck
 bun run check:secrets    # fails if any credential is found in project files
 bun run e2e:testnet      # full fund, detect, verify, pay journey on Arc Testnet
 bun run preflight:mainnet  # read-only mainnet readiness check (sends nothing)
+docker compose up -d --build  # production stack (needs /opt/changebounty/changebounty.env)
 ```
 
-A `Dockerfile` is included for hosts that run containers. Mount a persistent volume at `/data` to keep monitoring state; without one the app rebuilds its job list and payment history from chain events on restart.
+Production runs with Docker Compose behind Nginx and Let's Encrypt on an Ubuntu VPS. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the exact commands, Cloudflare DNS steps and operations. Monitoring state lives in a persistent Docker volume; if it is lost, the app rebuilds its job list and payment history from chain events on restart.
 
 ### Environment variables
 
@@ -68,6 +69,7 @@ Copy `.env.example` to `.env`. Secrets are not kept in `.env`: set `VERIFIER_PRI
 
 ## Docs
 
+- [Deployment guide](docs/DEPLOYMENT.md): Ubuntu VPS, Docker Compose, Nginx, HTTPS, Cloudflare.
 - [Mainnet runbook](docs/MAINNET_RUNBOOK.md): deploy and run the real USDC demo yourself.
 - [Security notes](docs/SECURITY.md)
 - [90-second demo script](docs/VIDEO_SCRIPT.md)

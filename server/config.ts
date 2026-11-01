@@ -55,14 +55,17 @@ function loadVerifierKey(): Hex | null {
 }
 
 const verifierKey = loadVerifierKey()
-const port = intEnv('PORT', 3001, 1, 65535)
+// Hugging Face Spaces (and most container hosts) route to 7860; local development uses 3001.
+const onSpace = Boolean(env.SPACE_ID)
+const port = intEnv('PORT', onSpace || env.NODE_ENV === 'production' ? 7860 : 3001, 1, 65535)
 const allowPrivateHosts = new Set(
   (env.ALLOW_PRIVATE_FETCH_HOSTS ?? '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
 )
-const publicBaseUrl = (env.PUBLIC_BASE_URL ?? `http://localhost:${port}`).replace(/\/+$/, '')
+// On a Hugging Face Space the public origin is provided by the platform.
+const publicBaseUrl = (env.PUBLIC_BASE_URL ?? (env.SPACE_HOST ? `https://${env.SPACE_HOST}` : `http://localhost:${port}`)).replace(/\/+$/, '')
 const contract = addr(env.VITE_CHANGEBOUNTY_ADDRESS)
 const agentAddress = addr(env.VITE_AGENT_ADDRESS)
 const production = network === 'mainnet' || env.NODE_ENV === 'production'

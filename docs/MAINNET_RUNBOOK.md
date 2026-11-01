@@ -22,10 +22,11 @@ Budget for the whole demonstration: about 0.02 USDC of escrow (one 0.01 USDC rew
 
 ## 1. Create the mainnet verifier key and admin token
 
-On a trusted machine (not shared, not a screen recording):
+On the VPS (this is step 4 of DEPLOYMENT.md), or on a trusted machine that is not shared or screen-recorded:
 
 ```bash
-bun run setup:wallets
+sudo bash deploy/scripts/gen-keys.sh   # on the VPS
+# or, locally: bun run setup:wallets
 ```
 
 This prints the verifier address only. Fund it with about 0.05 USDC for gas. Read the generated `DEMO_ADMIN_TOKEN` from `~/.changebounty/secrets.env` and set both values as host secrets in step 4. Delete the local secrets file if the key will only ever live on the host.
@@ -49,9 +50,9 @@ A keystore (`cast wallet import`, then `--account <name>`) is safer than `--priv
 
 ## 3. Host the app with persistent storage
 
-Use a host that runs a long-lived Node or Docker process (the repository includes a Dockerfile; Hugging Face Docker Spaces, Fly, Railway and a VPS all work). Static-only hosts cannot run the monitoring agent.
+The official deployment is the Ubuntu VPS at https://changebounty.ogsnap.online. Follow [DEPLOYMENT.md](DEPLOYMENT.md): Docker Compose with a persistent volume, Nginx and Let's Encrypt. Static-only hosts cannot run the monitoring agent.
 
-Set these on the host (secrets as secrets, the rest as plain variables):
+Set these in `/opt/changebounty/changebounty.env` on the VPS (root-only, outside the repository):
 
 ```
 VITE_ARC_NETWORK=mainnet
