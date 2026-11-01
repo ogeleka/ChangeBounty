@@ -6,7 +6,6 @@
 import { http, createConfig } from 'wagmi'
 import { mainnet } from 'wagmi/chains'
 import { arc, arcTestnet } from 'viem/chains'
-import { injected } from 'wagmi/connectors'
 import { requireChain } from './onchain-facts'
 import { registerChain } from './tracing'
 
@@ -20,7 +19,10 @@ registerChain(arc.id, ARC_RPC)
 
 export const config = createConfig({
   chains: [arcTestnet, arc, mainnet], // mainnet (Ethereum) needed for ENS resolution
-  connectors: [injected()],
+  // No generic injected() connector: it always uses window.ethereum, which is ambiguous when several
+  // wallets are installed. wagmi discovers each wallet via EIP-6963 (multiInjectedProviderDiscovery,
+  // on by default) and gives every one its own connector bound to that wallet's provider.
+  connectors: [],
   transports: {
     [arcTestnet.id]: http(ARC_TESTNET_RPC),
     [arc.id]: http(ARC_RPC),
