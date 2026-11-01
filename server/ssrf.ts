@@ -3,6 +3,7 @@ import type { LookupAddress } from 'node:dns'
 import http from 'node:http'
 import https from 'node:https'
 import net from 'node:net'
+import tls from 'node:tls'
 import zlib from 'node:zlib'
 import type { Readable } from 'node:stream'
 import { config } from './config'
@@ -222,7 +223,9 @@ function decoderFor(encoding: string | undefined): zlib.Gunzip | zlib.Inflate | 
   }
 }
 
-function requestOnce(url: URL, userAgent: string, allowlisted: boolean): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
+async function requestOnce(url: URL, userAgent: string, allowlisted: boolean): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
+  // Resolve and validate once. Every address returned has passed the public-address check.
+  const pinned = (await resolvePublic(url.hostname, allowlisted))[0]
   return new Promise((resolve, reject) => {
     const mod = url.protocol === 'https:' ? https : http
     let settled = false
@@ -237,17 +240,25 @@ function requestOnce(url: URL, userAgent: string, allowlisted: boolean): Promise
       {
         method: 'GET',
         headers: { 'user-agent': userAgent, accept: 'text/html,application/xhtml+xml,text/plain;q=0.9', 'accept-encoding': 'gzip, deflate, br' },
-        // Pin the socket to an address we validated at connect time: no DNS rebinding window.
-        lookup: (hostname, opts, cb) => {
-          resolvePublic(hostname, allowlisted).then(
-            (addrs) => {
-              // Every address returned here has passed the public-address check.
-              if (opts.all) cb(null, addrs)
-              else cb(null, addrs[0].address, addrs[0].family)
-            },
-            (err: Error) => cb(err as NodeJS.ErrnoException, opts.all ? [] : '', 4),
-          )
-        },
+        // Pin the socket to the address validated above: no DNS rebinding window.
+        // For HTTPS, Bun's node:https ignores a custom lookup and verifies the certificate against the IP,
+        // so the TLS socket is connected to the validated IP while SNI and certificate checks keep the hostname.
+        ...(url.protocol === 'https:'
+          ? {
+              createConnection: () =>
+                tls.connect({
+                  socket: net.connect(Number(url.port) || 443, pinned.address),
+                  servername: url.hostname,
+                  host: url.hostname,
+                  port: Number(url.port) || 443,
+                }),
+            }
+          : {
+              lookup: ((_hostname: string, opts: { all?: boolean }, cb: (...args: unknown[]) => void) => {
+                if (opts.all) cb(null, [pinned])
+                else cb(null, pinned.address, pinned.family)
+              }) as unknown as NonNullable<https.RequestOptions['lookup']>,
+            }),
       },
       (res) => {
         const status = res.statusCode ?? 0
