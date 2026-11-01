@@ -79,4 +79,5 @@ Copy `.env.example` to `.env`. Secrets are not kept in `.env`: set `VERIFIER_PRI
 - [Mainnet runbook](docs/MAINNET_RUNBOOK.md): deploy and run the real USDC demo yourself.
 - [Security notes](docs/SECURITY.md)
 - [90-second demo script](docs/VIDEO_SCRIPT.md)
+- [Notifications plan](docs/NOTIFICATIONS.md): Telegram and email alerts (planned)
 - [Microgrant submission text](docs/SUBMISSION.md)
