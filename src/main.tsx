@@ -73,7 +73,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <ConnectKitProvider>
+        {/* initialChainId 0: connecting only asks for accounts. ConnectKit otherwise switches the wallet to
+            chains[0] (Arc Testnet) even when the server runs mainnet; useBounty switches to the configured network. */}
+        <ConnectKitProvider options={{ initialChainId: 0 }}>
           <App />
           <StudioWatermark />
           <Toaster position="top-center" />
