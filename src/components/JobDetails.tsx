@@ -158,7 +158,7 @@ export default function JobDetails() {
   if (error || !job || !b.cfg) {
     return (
       <Empty title="Job not found">
-        {error instanceof ApiError ? error.message : 'It may not be registered with the monitor yet.'}{' '}
+        {error instanceof ApiError ? error.message.replace(/^Job not found\.\s*/, '') || 'It may not be registered with the monitor yet.' : 'It may not be registered with the monitor yet.'}{' '}
         <Link className="text-[#9cc2ff] hover:underline" to="/dashboard">Back to dashboard</Link>
       </Empty>
     )

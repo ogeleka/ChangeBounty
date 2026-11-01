@@ -1,5 +1,5 @@
 import { ConnectKitButton } from 'connectkit'
-import { Wallet } from 'lucide-react'
+import { ExternalLink, Wallet } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAppConfig } from '@/lib/api'
 import { shortAddr } from '@/lib/format'
@@ -27,7 +27,7 @@ function NetworkBadge() {
       title={main ? 'Real USDC on Arc mainnet' : 'Test USDC with no real value'}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${main ? 'bg-emerald-400' : 'bg-amber-300'}`} />
-      {data.chainName}
+      {main ? 'Arc mainnet' : data.chainName}
     </span>
   )
 }
@@ -38,12 +38,16 @@ function WalletButton() {
       {({ isConnected, show, address }) => (
         <button type="button" onClick={show} className={isConnected ? 'btn-ghost !min-h-[40px] !px-4' : 'btn-primary !min-h-[40px] !px-4'}>
           <Wallet size={16} aria-hidden />
-          <span className="mono text-[13px]">{isConnected && address ? shortAddr(address) : 'Connect wallet'}</span>
+          {isConnected && address ? <span className="mono text-[13px]">{shortAddr(address)}</span> : <span>Connect wallet</span>}
         </button>
       )}
     </ConnectKitButton.Custom>
   )
 }
+
+const SOURCE_URL = 'https://github.com/ogeleka/ChangeBounty'
+
+const footLink = 'inline-flex items-center gap-1.5 text-[#a9b6c9] hover:text-white'
 
 const link = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-white/10 text-white' : 'text-[#a9b6c9] hover:text-white'}`
@@ -77,19 +81,40 @@ export default function Layout() {
       <main className="mx-auto max-w-6xl px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
         <Outlet />
       </main>
-      <footer className="border-t border-white/10 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 text-sm text-[#7587a0] sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>ChangeBounty. Verification relies on a trusted verifier service; the contract bounds what it can pay.</p>
-          {data?.contract && (
-            <a
-              className="mono text-[13px] text-[#9cc2ff] hover:underline"
-              href={buildAddressExplorerUrl(data.chainId, data.contract)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Contract {shortAddr(data.contract)}
-            </a>
-          )}
+      <footer className="border-t border-white/10 py-12">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 text-sm sm:px-6 md:grid-cols-[1.5fr_1fr_1fr]">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <LogoMark size={24} />
+              <span className="display text-base font-semibold">ChangeBounty</span>
+            </div>
+            <p className="mt-3 max-w-sm leading-relaxed text-[#7587a0]">
+              When the internet changes, agents get paid. Verification relies on a trusted verifier service; the contract bounds what it can pay.
+            </p>
+          </div>
+          <nav aria-label="Footer">
+            <div className="label mb-3">App</div>
+            <ul className="space-y-2">
+              <li><NavLink to="/dashboard" className={footLink}>Dashboard</NavLink></li>
+              <li><NavLink to="/create" className={footLink}>Create job</NavLink></li>
+              <li><NavLink to="/demo" className={footLink}>Live demo</NavLink></li>
+            </ul>
+          </nav>
+          <div>
+            <div className="label mb-3">Verify it</div>
+            <ul className="space-y-2">
+              {data?.contract && (
+                <li>
+                  <a className={footLink} href={buildAddressExplorerUrl(data.chainId, data.contract)} target="_blank" rel="noopener noreferrer">
+                    Contract <span className="mono text-[13px] text-[#9cc2ff]">{shortAddr(data.contract)}</span>
+                  </a>
+                </li>
+              )}
+              <li><a className={footLink} href={SOURCE_URL} target="_blank" rel="noopener noreferrer">Source code<ExternalLink size={13} aria-hidden /></a></li>
+              <li><a className={footLink} href={`${SOURCE_URL}/blob/main/docs/SECURITY.md`} target="_blank" rel="noopener noreferrer">Security model<ExternalLink size={13} aria-hidden /></a></li>
+              <li><a className={footLink} href="https://studio.arc.io/" target="_blank" rel="noopener noreferrer">Built with Arc Studio<ExternalLink size={13} aria-hidden /></a></li>
+            </ul>
+          </div>
         </div>
       </footer>
     </div>

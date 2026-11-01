@@ -39,6 +39,7 @@ const StudioWatermark = () => (
     href="https://studio.arc.io/"
     target="_blank"
     rel="noopener noreferrer"
+    className="studio-badge"
     style={{
       position: 'fixed',
       bottom: '16px',

@@ -1,14 +1,14 @@
-import { ArrowRight, Eye, Fingerprint, Landmark, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Bell, Briefcase, Eye, Fingerprint, Gavel, Landmark, ScrollText, ShieldCheck, Tags } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Reveal, TxLink } from '@/components/ui'
-import { useAppConfig, usePayments } from '@/lib/api'
-import { hostOf, shortHash, timeAgo, usdc } from '@/lib/format'
-import { useJobs } from '@/lib/api'
+import { useAppConfig, useJobs, usePayments } from '@/lib/api'
+import { hostOf, shortAddr, shortHash, timeAgo, usdc } from '@/lib/format'
+import { buildAddressExplorerUrl } from '@/onchain-facts'
 
 function ProofCard() {
   const { data: payments } = usePayments()
   const { data: jobs } = useJobs(8000)
-  const { data: cfg } = useAppConfig()
+  const { data: cfg, isError } = useAppConfig()
   const latest = payments?.[0]
   const job = latest ? jobs?.find((j) => j.id === latest.jobId) : undefined
 
@@ -17,7 +17,8 @@ function ProofCard() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px overflow-hidden">
         <div className="h-px w-1/2 bg-gradient-to-r from-transparent via-[#7fb0ff] to-transparent" style={{ animation: 'scan 3.2s linear infinite' }} />
       </div>
-      <div className="label">Latest verified payout</div>
+      {latest && <div className="label">Latest verified payout</div>}
+      {!latest && <div className="label">System status</div>}
       {latest && cfg ? (
         <div className="mt-5 space-y-5">
           <div className="display num text-5xl font-semibold text-emerald-300">+{usdc(latest.rewardRaw)} <span className="text-2xl text-emerald-300/70">USDC</span></div>
@@ -29,13 +30,34 @@ function ProofCard() {
           </div>
           {latest.txHash && <TxLink chainId={cfg.chainId} hash={latest.txHash} label={`Tx ${shortHash(latest.txHash)}`} />}
         </div>
-      ) : (
-        <div className="mt-5 space-y-3">
-          <div className="display text-3xl font-semibold text-[#e3ecf9]">Waiting for the first change.</div>
+      ) : cfg ? (
+        <div className="mt-5 space-y-5">
+          <div className="flex items-center gap-2.5">
+            <span className="live-dot h-2 w-2 rounded-full bg-emerald-400" aria-hidden />
+            <span className="display text-2xl font-semibold text-[#e3ecf9]">Live on {cfg.network === 'mainnet' ? 'Arc mainnet' : cfg.chainName}</span>
+          </div>
+          <div className="space-y-3 rounded-xl bg-white/[0.04] p-4">
+            {cfg.contract && (
+              <Row
+                k="Contract"
+                v={
+                  <a className="mono text-[#9cc2ff] hover:underline" href={buildAddressExplorerUrl(cfg.chainId, cfg.contract)} target="_blank" rel="noopener noreferrer">
+                    {shortAddr(cfg.contract)}
+                  </a>
+                }
+              />
+            )}
+            <Row k="Verifier" v={cfg.verifierReady ? <span className="text-emerald-300">Ready</span> : <span className="text-amber-200">Not configured</span>} />
+            <Row k="Page checks" v={`Every ${cfg.pollIntervalSec} seconds`} />
+            <Row k="Jobs watched" v={<span className="num">{jobs?.filter((j) => j.monitoring === 'active').length ?? '…'}</span>} />
+          </div>
           <p className="text-[15px] text-[#8396b0]">
-            Nothing is shown here until a real payout lands onchain. Run the live demo to produce one.
+            No payout yet. The first verified change will appear here with its transaction.{' '}
+            <Link to="/demo" className="text-[#9cc2ff] hover:underline">Run the live demo</Link>
           </p>
         </div>
+      ) : (
+        <p className="mt-5 text-[15px] text-[#8396b0]">{isError ? 'The ChangeBounty service is unreachable right now. Please try again shortly.' : 'Loading live status…'}</p>
       )}
     </div>
   )
@@ -47,6 +69,36 @@ function Row({ k, v }: { k: string; v: React.ReactNode }) {
       <span className="text-[#7587a0]">{k}</span>
       <span className="truncate text-right text-[#e3ecf9]">{v}</span>
     </div>
+  )
+}
+
+const USES = [
+  { icon: Gavel, title: 'Procurement tenders', body: 'A new tender is posted on a public procurement portal.' },
+  { icon: Tags, title: 'Prices and terms', body: 'A supplier changes its price list or its terms of service.' },
+  { icon: ScrollText, title: 'Announcements', body: 'A project publishes a release note, an incident report or a policy update.' },
+  { icon: Briefcase, title: 'Job postings', body: 'A company opens a new role on its careers page.' },
+]
+
+function AlertsBand() {
+  const { data: cfg } = useAppConfig()
+  const alerts = cfg?.alerts
+  if (!alerts || (!alerts.telegramBot && !alerts.email)) return null
+  const channels = [alerts.telegramBot && 'Telegram', alerts.email && 'email'].filter(Boolean).join(' or ')
+  return (
+    <Reveal>
+      <section className="card flex flex-col gap-6 p-8 sm:flex-row sm:items-center" aria-labelledby="alerts">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#85b1ed]/10 text-[#9cc2ff]">
+          <Bell size={22} aria-hidden />
+        </span>
+        <div>
+          <h2 id="alerts" className="display text-2xl font-semibold">Hear about it first.</h2>
+          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[#a9b6c9]">
+            Get a message on {channels} when a change is confirmed and paid, when a job runs low on USDC, or when a new verifier is proposed. Turn it on from
+            any job you created.
+          </p>
+        </div>
+      </section>
+    </Reveal>
   )
 }
 
@@ -99,6 +151,24 @@ export default function Landing() {
           ))}
         </div>
       </section>
+
+      <section aria-labelledby="uses">
+        <h2 id="uses" className="display text-3xl font-semibold sm:text-4xl">Watch the pages that matter.</h2>
+        <p className="mt-3 max-w-2xl text-[15px] text-[#8396b0]">Any public page with text works. A few examples:</p>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {USES.map((u, i) => (
+            <Reveal key={u.title} delay={i * 0.05}>
+              <div className="h-full rounded-2xl border border-white/10 p-5">
+                <u.icon size={20} className="text-emerald-300" aria-hidden />
+                <h3 className="mt-4 font-semibold text-[#e3ecf9]">{u.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-[#8396b0]">{u.body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      <AlertsBand />
 
       <section className="grid gap-6 lg:grid-cols-2" aria-labelledby="trust">
         <div className="card p-8">

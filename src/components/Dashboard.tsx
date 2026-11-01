@@ -86,6 +86,9 @@ export default function Dashboard() {
         ) : visible.length === 0 ? (
           <Empty title={scope === 'mine' ? 'No jobs from this wallet yet' : 'No jobs yet'}>
             Create a job to start watching a page. Your first fetch only sets a baseline and costs nothing.
+            <div className="mt-5">
+              <Link to="/create" className="btn-primary"><Plus size={16} aria-hidden />Create a job</Link>
+            </div>
           </Empty>
         ) : (
           <div className="card divide-y divide-white/5 p-2">

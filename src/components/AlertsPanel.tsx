@@ -29,11 +29,14 @@ export default function AlertsPanel({ address }: { address: string }) {
     refetchInterval: (q) => ((telegramUrl && !q.state.data?.telegram) || q.state.data?.email === 'pending' ? 3000 : false),
   })
 
-  if (!cfg || (!cfg.alerts.telegramBot && !cfg.alerts.email)) return null
+  const alerts = cfg?.alerts
+  if (!cfg || !alerts || (!alerts.telegramBot && !alerts.email)) return null
+  const { site } = alerts
+  const { chainId } = cfg
   const s = status.data
 
   async function signed(action: AlertAction, withEmail?: string) {
-    const req = { action, address, email: withEmail, site: cfg!.alerts.site, chainId: cfg!.chainId, issuedAt: new Date().toISOString(), nonce: nonce() }
+    const req = { action, address, email: withEmail, site, chainId, issuedAt: new Date().toISOString(), nonce: nonce() }
     const signature = await signMessageAsync({ message: alertMessage(req) })
     return { ...req, signature }
   }
@@ -79,7 +82,7 @@ export default function AlertsPanel({ address }: { address: string }) {
         <p className="mt-1 text-sm text-[#8396b0]">Get a message when a change is confirmed and paid, or when a job needs attention. Covers every job created by this wallet.</p>
       </div>
 
-      {cfg.alerts.telegramBot && (
+      {alerts.telegramBot && (
         <div className="space-y-2">
           <div className="label flex items-center gap-1.5"><Send size={13} aria-hidden />Telegram</div>
           {s?.telegram ? (
@@ -102,7 +105,7 @@ export default function AlertsPanel({ address }: { address: string }) {
         </div>
       )}
 
-      {cfg.alerts.email && (
+      {alerts.email && (
         <div className="space-y-2">
           <div className="label flex items-center gap-1.5"><Mail size={13} aria-hidden />Email</div>
           {s?.email === 'confirmed' ? (

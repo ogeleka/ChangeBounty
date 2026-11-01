@@ -105,6 +105,13 @@ body {
   animation: pulse-ring 1.8s ease-out infinite;
 }
 
+/* The floating Studio badge covers content on phones; the footer carries the same link there. */
+@media (max-width: 639px) {
+  .studio-badge {
+    display: none !important;
+  }
+}
+
 iframe.site-frame {
   background: #f6f4ee;
 }
